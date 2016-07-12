@@ -1,0 +1,224 @@
+---
+title: "Origin of anti-sickling activity via QSAR modelling"
+author: "Chuleeporn Phanus-umporn, Saw Simeon, Watshara Shoombuatong and Chanin Nantasenamat"
+date: "July 7, 2016"
+output: pdf_document
+---
+
+## Reading the data file, removing the the column having Standard Deviation equal to 0 
+
+```{r}
+
+df <- read.csv("data.csv")
+Activity <- df$Activity
+descriptors <- df[, 2:ncol(df)]
+curated_descriptors <- descriptors[, which(!apply(descriptors, 2, sd) == 0)]
+real_data <- cbind(Activity, curated_descriptors)
+```
+
+## Fuction for building classification model using random forest 100 times (over-sampling, stratified data splitting, stastical assessment including accuracy, sensitivity, specificity and matthew correlation coefficient)
+
+```{r}
+
+RF_training_classification <- function(x) {
+  library(parallel)
+  library(doSNOW)
+  cl <- makeCluster(8)
+  registerDoSNOW(cl)
+  
+  ok <- list(100)
+  ok <- foreach(i = 1:100 ) %dopar% {
+    
+    data <- x
+    active <- subset(data, Activity == "active")
+    inactive <- subset(data, Activity == "inactive")
+    inactive <- dplyr::sample_n(inactive, size =  32, replace = FALSE)
+    data <- rbind(active, inactive)
+    trainIndex <- caret::createDataPartition(data$Activity, p = 0.8,
+                                             list = FALSE, times = 1)
+    train <- data[trainIndex, ]
+    test <- data[-trainIndex, ]
+    train <- data
+    model_train <- ranger::ranger(Activity~., data = train, write.forest = TRUE, save.memory = TRUE)
+    rm(ctrl)
+    rm(rf)
+    rm(data)
+    rm(trainIndex)
+    actual <- train$Activity
+    prediction <- predict(model_train, train)
+    prediction <- prediction$predictions
+    rm(train)
+    rm(test)
+    rm(model_train)
+    results <- caret::confusionMatrix(prediction, actual)
+    results <- results$table
+    results <- as.numeric(results)
+    rm(prediction)
+    rm(actual)
+    ok[[i]] <- results
+    
+    
+    
+  }
+  return(ok)
+  stopCluster(cl)
+}
+
+
+mean_and_sd <- function(x) {
+  c(round(mean(x, na.rm = TRUE), digits = 2),
+    round(sd(x, na.rm = TRUE), digits = 2))
+}
+
+RF_train_classification <- function(x) {
+  ok <- RF_training_classification(x)
+  results <- data.frame(ok)
+  rm(ok)
+  data <- data.frame(results)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+  
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+    
+    
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(ACC)
+  rm(SENS)
+  rm(SPEC)
+  rm(MCC)
+  rm(data)
+  rm(m)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  rm(results_ACC)
+  rm(results_SENS)
+  rm(results_SPEC)
+  rm(results_MCC)
+  return(results_all)
+}
+
+
+RF_10_CV <- function(x){
+  library(parallel)
+  library(doSNOW)
+  cl <- makeCluster(8)
+  registerDoSNOW(cl)
+  
+  ok <- list(100)
+  ok <- foreach(i = 1:100, .packages = 'randomForest') %dopar% { 
+    data <- x
+    #active <- subset(data, Activity == "active")
+    #active <- dplyr::sample_n(active, size = 83, replace = TRUE)
+    #inactive <- subset(data, Activity == "inactive")
+    #data <- rbind(active, inactive)
+    trainIndex <- caret::createDataPartition(data$Activity, p = .8,
+                                             list = FALSE, times = 1)
+    train <- data[trainIndex, ]
+    test <- data[-trainIndex, ]
+    k = 10
+    index <- sample(1:k, nrow(train), replace = TRUE)
+    folds <- 1:k
+    myRes <- data.frame()
+    for (j in 1:k) {
+      training <- subset(train, index %in% folds[-j])
+      testing <- subset(train, index %in% c(j))
+      model_train <- ranger::ranger(Activity~., data = training, write.forest = TRUE, save.memory = TRUE)
+      prediction <- predict(model_train, testing)
+      prediction <- prediction$prediction
+      actual <- testing$Activity
+      ok <- data.frame(prediction = as.character(prediction), actual = as.character(actual))
+      myRes <- rbind(myRes, ok)
+    }
+    
+    prediction <- myRes$prediction
+    actual <- myRes$actual
+    results <- caret::confusionMatrix(myRes$prediction, myRes$actual)
+    results <- results$table
+    results <- as.numeric(results)
+    rm(data)
+    rm(model)
+    rm(prediction)
+    rm(train)
+    rm(actual)
+    rm(actual)
+    ok[[i]] <- results
+  }
+  return(ok)
+  stopCluster(cl)
+}
+
+
+mean_and_sd <- function(x) {
+  c(round(mean(x, na.rm = TRUE), digits = 2),
+    round(sd(x, na.rm = TRUE), digits = 2))
+}
+
+RF_10_cross_validation <- function(x) {
+  ok <- RF_10_CV(x)
+  results <- data.frame(ok)
+  rm(ok)
+  data <- data.frame(results)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+  
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+    
+    
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(ACC)
+  rm(SENS)
+  rm(SPEC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  return(results_all)
+}
+
+```
+
+## Using the function writter from above
+
+```{r, error = FALSE, message=FALSE, warning=FALSE}
+
+training <- RF_train_classification(real_data)
+training
+cv <- RF_10_cross_validation(real_data)
+cv
+```
+
+
+
