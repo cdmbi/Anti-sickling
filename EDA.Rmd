@@ -1,0 +1,33 @@
+---
+title: "Chemical Space"
+author: "Chuleeporn Phanus-umporn, Saw Simeon, Watshara Shoombuatong and Chanin Nantasenamat"
+date: "July 13, 2559 BE"
+output: pdf_document
+---
+
+
+
+```{r, fig.width = 20, fig.height = 10, warning = FALSE, message = FALSE, fig.align = 'center'}
+
+library(caret)
+library(reshape2)
+
+df <- read.csv("data.csv")
+names <- c("Activity", "SubFPC171", "SubFPC5", "SubFPC1", "SubFPC298", "SubFPC2", "SubFPC16", "SubFPC173", "SubFPC18", "SubFPC275", 
+           "SubFPC100")
+df <- df[, names]
+data_melt <- melt(df)
+ggplot(aes(y = value, x = variable, fill = Activity), data = data_melt) + geom_boxplot() + 
+  ylab("Substructure Count") + theme(
+    legend.position = "none",
+    axis.text.y = element_text(size = 20, colour = "black"),
+    axis.text.x = element_text(size = 20, colour = "black"),
+    plot.margin = unit(c(1,1, 1, 1),"cm"),
+    panel.border = element_rect(linetype = "solid", colour = "black", fill = NA, size = 1),
+    axis.title = element_text(size = 25, face = "bold", colour = "black")
+  )
+
+
+
+```
+
