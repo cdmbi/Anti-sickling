@@ -5,8 +5,8 @@ date: "July 13, 2559 BE"
 output: pdf_document
 ---
 
-## Chemical space of AChE inhibitors
-```{r, warning=FALSE, message=FALSE, error=FALSE}
+## Chemical space of anti-sickling
+```{r, warning=FALSE, message=FALSE, error=FALSE, cache = TRUE}
 library(cowplot)
 data <- read.csv("Linpiski_Descriptors.csv")
 descriptors_name <- c("ALogP", "nHBAcc", "nHBDon", "MW")
@@ -34,7 +34,7 @@ print(p)
 
 ### Chemical space of AChE inhibitors are shown as active (green), inactive (red) and intermediate (blue)
 
-```{r, warning= FALSE, message=FALSE}
+```{r, warning= FALSE, message=FALSE, cache = TRUE}
 library(ggplot2)
 library(cowplot)
 data_2 <- cbind(Activity, descriptors)
@@ -58,7 +58,7 @@ print(p)
 
 ### Boxplot of Lipinski's rule-of-five descriptors (ALogP) 
 
-```{r, warning= FALSE, message=FALSE}
+```{r, warning= FALSE, message=FALSE, cache = TRUE}
 
 p_1 <- ggplot(data_plot, aes(factor(Activity), ALogP))
 p_1 <- p_1 + geom_boxplot(aes(fill = factor(Activity)), alpha = 0.7)
@@ -78,7 +78,7 @@ print(p_1)
 
 ### Boxplot of Lipinski's rule-of-five descriptors (nHBAcc) 
 
-```{r, warning= FALSE, message=FALSE}
+```{r, warning= FALSE, message=FALSE, cache = TRUE}
 
 p_2 <- ggplot(data_plot, aes(factor(Activity), nHBAcc))
 p_2 <- p_2 + geom_boxplot(aes(fill = factor(Activity)), alpha = 0.7)
@@ -97,7 +97,7 @@ print(p_2)
 
 ### Boxplot of Lipinski's rule-of-five descriptors (nHBDon) 
 
-```{r, warning= FALSE, message=FALSE}
+```{r, warning= FALSE, message=FALSE, cache = TRUE}
 
 p_3 <- ggplot(data_plot, aes(factor(Activity), nHBDon))
 p_3 <- p_3 + geom_boxplot(aes(fill = factor(Activity)), alpha = 0.7)
@@ -116,7 +116,7 @@ print(p_3)
 
 ### Boxplot of Lipinski's rule-of-five descriptors (MW) 
 
-```{r, warning= FALSE, message=FALSE}
+```{r, warning= FALSE, message=FALSE, cache = TRUE}
 
 
 p_4 <- ggplot(data_plot, aes(factor(Activity), MW))
@@ -136,7 +136,7 @@ print(p_4)
 \pagebreak
 
 # Arranging boxplot of Lipinski's rule-of-file descriptors (ALogP, nHBAcc, nHBDon, MW)
-```{r, fig.width = 10, fig.height= 10, warning=FALSE, message=FALSE}
+```{r, fig.width = 10, fig.height= 10, warning=FALSE, message=FALSE, cache = TRUE}
 library(cowplot)
 plot_grid(p_1, p_2, p_3, p_4)
 
@@ -146,7 +146,7 @@ plot_grid(p_1, p_2, p_3, p_4)
 
 ## EDA of feature important analysis
 
-```{r, fig.width = 20, fig.height = 10, warning = FALSE, message = FALSE, fig.align = 'center'}
+```{r, fig.width = 20, fig.height = 10, warning = FALSE, message = FALSE, fig.align = 'center', cache = TRUE}
 
 library(caret)
 library(reshape2)
